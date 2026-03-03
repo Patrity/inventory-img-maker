@@ -1,60 +1,74 @@
-# Nuxt Starter Template
+# OSRS Inventory Image Maker
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+A web tool for creating inventory icon definitions for Old School RuneScape item models. Upload a model `.dat` file from the OSRS cache, adjust camera parameters in real-time, and export the definition values.
 
-Use this template to get started with [Nuxt UI](https://ui.nuxt.com) quickly.
+Built with Nuxt 4, Nuxt UI, and TypeScript.
 
-- [Live demo](https://starter-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
+## Features
 
-<a href="https://starter-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png">
-    <img alt="Nuxt Starter Template" src="https://ui.nuxt.com/assets/templates/nuxt/starter-light.png" width="830" height="466">
-  </picture>
-</a>
+- **Model Upload** - Drag-and-drop `.dat` files from the OSRS cache (supports gzip-compressed containers)
+- **Live Preview** - Real-time 36x32 native resolution preview with 10x scaled view, matching the OSRS inventory slot aesthetic
+- **Parameter Controls** - Adjust zoom, roll, pitch, yaw, and X/Y offset with linked sliders and number inputs
+- **Definition Export** - Copy the final definition to clipboard in OSRS config format
 
-> The starter template for Vue is on https://github.com/nuxt-ui-templates/starter-vue.
+## How It Works
+
+```
+.dat file → Decompress → Parse Model → Light Faces → Rasterize to Canvas
+```
+
+The app reads OSRS binary model formats (Type 1/2/3 and legacy), applies Euler angle rotations, and renders triangles using a scanline rasterizer with flat and Gouraud shading - all in the browser with no server required.
 
 ## Quick Start
 
-```bash [Terminal]
-npm create nuxt@latest -- -t github:nuxt-ui-templates/starter
-```
-
-## Deploy your own
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=starter&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fstarter&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fstarter-dark.png&demo-url=https%3A%2F%2Fstarter-template.nuxt.dev%2F&demo-title=Nuxt%20Starter%20Template&demo-description=A%20minimal%20template%20to%20get%20started%20with%20Nuxt%20UI.)
-
-## Setup
-
-Make sure to install the dependencies:
-
 ```bash
 pnpm install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
-```bash
 pnpm dev
 ```
 
-## Production
+Open [http://localhost:3000](http://localhost:3000) and upload a `.dat` model file. A sample model is included at `sample-models/38606.dat`.
 
-Build the application for production:
+## Scripts
 
-```bash
-pnpm build
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start dev server on port 3000 |
+| `pnpm build` | Build for production |
+| `pnpm preview` | Preview production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Run TypeScript type checking |
+
+## Project Structure
+
+```
+app/
+  pages/index.vue              # Main editor page
+  components/
+    ModelUpload.vue             # File upload with drag-and-drop
+    ModelPreview.client.vue     # Canvas rendering (client-only)
+    DefinitionControls.vue      # Parameter sliders
+    DefinitionExport.vue        # Text export + copy
+  composables/
+    useModelRenderer.ts         # 3D-to-2D rendering pipeline
+shared/
+  types/model.ts                # ModelDefinition, LitModel, InventoryDefinition
+  utils/
+    model-parser.ts             # OSRS .dat file decoder
+    cache-container.ts          # Gzip decompression
+    binary-stream.ts            # Binary format reader
+    rasterizer.ts               # Scanline triangle rasterizer
+    rs-colors.ts                # OSRS HSL color palette
+sample-models/
+  38606.dat                     # Example model for testing
 ```
 
-Locally preview production build:
+## Tech Stack
 
-```bash
-pnpm preview
-```
+- [Nuxt 4](https://nuxt.com) - Vue framework
+- [Nuxt UI](https://ui.nuxt.com) - Component library
+- [Tailwind CSS](https://tailwindcss.com) - Styling
+- TypeScript - Type safety
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## License
+
+[MIT](./LICENSE)
