@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { InventoryDefinition, LitModel } from '../../shared/types/model'
+import type { InventoryDefinition, LitModel } from '~~/shared/types/model'
 
 const props = defineProps<{
   model: LitModel | null

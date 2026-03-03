@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { LitModel, InventoryDefinition } from '../../shared/types/model'
+import type { LitModel, InventoryDefinition } from '~~/shared/types/model'
 
 const model = shallowRef<LitModel | null>(null)
 const definition = reactive<InventoryDefinition>({

@@ -1,5 +1,5 @@
-import type { InventoryDefinition, LitModel } from '../../shared/types/model'
-import { Rasterizer } from '../../shared/utils/rasterizer'
+import type { InventoryDefinition, LitModel } from '~~/shared/types/model'
+import { Rasterizer } from '~~/shared/utils/rasterizer'
 
 // OSRS uses a 2048-unit circle for rotations
 const SINE = new Int32Array(2048)

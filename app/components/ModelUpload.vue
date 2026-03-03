@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { LitModel } from '../../shared/types/model'
-import { decompressCacheContainer } from '../../shared/utils/cache-container'
-import { lightModel, parseModel } from '../../shared/utils/model-parser'
+import type { LitModel } from '~~/shared/types/model'
+import { decompressCacheContainer } from '~~/shared/utils/cache-container'
+import { lightModel, parseModel } from '~~/shared/utils/model-parser'
 
 const emit = defineEmits<{
   loaded: [model: LitModel]

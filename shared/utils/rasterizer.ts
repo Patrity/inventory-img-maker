@@ -1,4 +1,4 @@
-import { getColorPalette } from './rs-colors'
+import { getColorPalette } from '~~/shared/utils/rs-colors'
 
 export class Rasterizer {
   pixels: Int32Array

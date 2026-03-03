@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { InventoryDefinition } from '../../shared/types/model'
+import type { InventoryDefinition } from '~~/shared/types/model'
 
 const definition = defineModel<InventoryDefinition>('definition', { required: true })
 

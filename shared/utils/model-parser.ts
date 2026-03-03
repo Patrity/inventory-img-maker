@@ -1,6 +1,6 @@
-import type { LitModel, ModelDefinition } from '../types/model'
-import { BinaryStream } from './binary-stream'
-import { adjustLightness } from './rs-colors'
+import type { LitModel, ModelDefinition } from '~~/shared/types/model'
+import { BinaryStream } from '~~/shared/utils/binary-stream'
+import { adjustLightness } from '~~/shared/utils/rs-colors'
 
 export function parseModel(data: Uint8Array): ModelDefinition {
   const stream = new BinaryStream(data)
