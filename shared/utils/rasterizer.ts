@@ -21,7 +21,7 @@ export class Rasterizer {
     color: number
   ) {
     const palette = getColorPalette()
-    const rgb = palette[color & 0xFFFF]
+    const rgb = palette[color & 0xFFFF] ?? 0
     this.rasterSolid(y0, y1, y2, x0, x1, x2, rgb)
   }
 
@@ -31,9 +31,9 @@ export class Rasterizer {
     c0: number, c1: number, c2: number
   ) {
     const palette = getColorPalette()
-    const rgb0 = palette[c0 & 0xFFFF]
-    const rgb1 = palette[c1 & 0xFFFF]
-    const rgb2 = palette[c2 & 0xFFFF]
+    const rgb0 = palette[c0 & 0xFFFF] ?? 0
+    const rgb1 = palette[c1 & 0xFFFF] ?? 0
+    const rgb2 = palette[c2 & 0xFFFF] ?? 0
     this.rasterInterpolated(y0, y1, y2, x0, x1, x2, rgb0, rgb1, rgb2)
   }
 
@@ -270,7 +270,7 @@ export class Rasterizer {
     const imageData = new ImageData(this.width, this.height)
     const data = imageData.data
     for (let i = 0; i < this.pixels.length; i++) {
-      const rgb = this.pixels[i]
+      const rgb = this.pixels[i] ?? 0
       const offset = i * 4
       if (rgb !== 0) {
         data[offset] = (rgb >> 16) & 0xFF

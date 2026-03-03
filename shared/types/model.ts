@@ -46,6 +46,7 @@ export interface LitModel {
   faceColors3: Int32Array
   facePriorities: Int8Array | null
   faceAlphas: Int8Array | null
+  modelHeight: number
 }
 
 export interface InventoryDefinition {

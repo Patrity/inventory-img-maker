@@ -1,7 +1,7 @@
 import type { InventoryDefinition, LitModel } from '~~/shared/types/model'
 import { Rasterizer } from '~~/shared/utils/rasterizer'
 
-// OSRS uses a 2048-unit circle for rotations
+// OSRS uses a 2048-unit circle for rotations, scaled by 65536 (fixed-point)
 const SINE = new Int32Array(2048)
 const COSINE = new Int32Array(2048)
 const UNIT = Math.PI / 1024
@@ -13,6 +13,9 @@ for (let i = 0; i < 2048; i++) {
 
 const ICON_WIDTH = 36
 const ICON_HEIGHT = 32
+const CENTER_X = 16
+const CENTER_Y = 16
+const RASTERIZER_ZOOM = 512
 
 export function useModelRenderer() {
   const rasterizer = new Rasterizer(ICON_WIDTH, ICON_HEIGHT)
@@ -26,94 +29,107 @@ export function useModelRenderer() {
     const { zoom, modelRoll, modelPitch, modelYaw, offsetX, offsetY } = definition
     const vertCount = model.vertexCount
 
-    // Transform vertices
     const projX = new Int32Array(vertCount)
     const projY = new Int32Array(vertCount)
     const projZ = new Int32Array(vertCount)
 
-    const sinRoll = SINE[modelRoll & 2047]
-    const cosRoll = COSINE[modelRoll & 2047]
-    const sinPitch = SINE[modelPitch & 2047]
-    const cosPitch = COSINE[modelPitch & 2047]
-    const sinYaw = SINE[modelYaw & 2047]
-    const cosYaw = COSINE[modelYaw & 2047]
+    // Trig for model rotations
+    const sinYaw = SINE[modelYaw & 2047] ?? 0
+    const cosYaw = COSINE[modelYaw & 2047] ?? 0
+    const sinRoll = SINE[modelRoll & 2047] ?? 0
+    const cosRoll = COSINE[modelRoll & 2047] ?? 0
+
+    // modelPitch (xan2d) controls camera orientation
+    const sinPitch = SINE[modelPitch & 2047] ?? 0
+    const cosPitch = COSINE[modelPitch & 2047] ?? 0
+
+    // Camera position derived from zoom and pitch angle
+    const yCamera = (model.modelHeight >> 1) + (zoom * sinPitch >> 16) + offsetY
+    const zCamera = (zoom * cosPitch >> 16) + offsetY
 
     for (let i = 0; i < vertCount; i++) {
-      let x = model.vertexX[i]
-      let y = model.vertexY[i]
-      let z = model.vertexZ[i]
+      let x = model.vertexX[i] ?? 0
+      let y = model.vertexY[i] ?? 0
+      let z = model.vertexZ[i] ?? 0
 
-      // Roll (Z-axis rotation, rotates XY)
-      if (modelRoll !== 0) {
-        const tmpX = (y * sinRoll + x * cosRoll) >> 16
-        y = (y * cosRoll - x * sinRoll) >> 16
-        x = tmpX
-      }
-
-      // Pitch (X-axis rotation, rotates YZ)
-      if (modelPitch !== 0) {
-        const tmpY = (y * cosPitch - z * sinPitch) >> 16
-        z = (y * sinPitch + z * cosPitch) >> 16
-        y = tmpY
-      }
-
-      // Yaw (Y-axis rotation, rotates XZ)
+      // Rotation 1: modelYaw (zan2d) — Z-axis, rotates XY plane
       if (modelYaw !== 0) {
-        const tmpX = (z * sinYaw + x * cosYaw) >> 16
-        z = (z * cosYaw - x * sinYaw) >> 16
+        const tmpX = (y * sinYaw + x * cosYaw) >> 16
+        y = (y * cosYaw - x * sinYaw) >> 16
         x = tmpX
       }
 
-      // Apply zoom and project to screen coordinates
-      projX[i] = ((x * zoom) >> 16) + (ICON_WIDTH >> 1) + offsetX
-      projY[i] = ((y * zoom) >> 16) + (ICON_HEIGHT >> 1) + offsetY
+      // Rotation 2: yzRotation (X-axis) — always 0 for item sprites, skipped
+
+      // Rotation 3: modelRoll (yan2d) — Y-axis, rotates XZ plane
+      if (modelRoll !== 0) {
+        const tmpX = (z * sinRoll + x * cosRoll) >> 16
+        z = (z * cosRoll - x * sinRoll) >> 16
+        x = tmpX
+      }
+
+      // Camera translation
+      x += offsetX
+      y += yCamera
+      z += zCamera
+
+      // Camera orientation (modelPitch / xan2d) — X-axis rotation on YZ
+      const tmpY = (y * cosPitch - z * sinPitch) >> 16
+      z = (y * sinPitch + z * cosPitch) >> 16
+      y = tmpY
+
+      // Perspective projection
+      if (z > 0) {
+        projX[i] = CENTER_X + ((x * RASTERIZER_ZOOM / z) | 0)
+        projY[i] = CENTER_Y + ((y * RASTERIZER_ZOOM / z) | 0)
+      } else {
+        projX[i] = -9999
+        projY[i] = -9999
+      }
       projZ[i] = z
     }
 
     // Build face depth list for sorting
     const faceCount = model.faceCount
-    const faceOrder = new Int32Array(faceCount)
     const faceDepth = new Float64Array(faceCount)
 
     for (let i = 0; i < faceCount; i++) {
-      faceOrder[i] = i
-      const ia = model.faceIndices1[i]
-      const ib = model.faceIndices2[i]
-      const ic = model.faceIndices3[i]
-      faceDepth[i] = (projZ[ia] + projZ[ib] + projZ[ic]) / 3
+      const ia = model.faceIndices1[i] ?? 0
+      const ib = model.faceIndices2[i] ?? 0
+      const ic = model.faceIndices3[i] ?? 0
+      faceDepth[i] = ((projZ[ia] ?? 0) + (projZ[ib] ?? 0) + (projZ[ic] ?? 0)) / 3
     }
 
     // Sort faces back-to-front (painter's algorithm)
-    const orderArray = Array.from(faceOrder)
-    orderArray.sort((a, b) => faceDepth[b] - faceDepth[a])
+    const orderArray = new Array<number>(faceCount)
+    for (let i = 0; i < faceCount; i++) orderArray[i] = i
+    orderArray.sort((a, b) => (faceDepth[b] ?? 0) - (faceDepth[a] ?? 0))
 
     // Rasterize faces
     for (let fi = 0; fi < faceCount; fi++) {
-      const i = orderArray[fi]
-      const ia = model.faceIndices1[i]
-      const ib = model.faceIndices2[i]
-      const ic = model.faceIndices3[i]
+      const i = orderArray[fi]!
+      const ia = model.faceIndices1[i] ?? 0
+      const ib = model.faceIndices2[i] ?? 0
+      const ic = model.faceIndices3[i] ?? 0
 
-      const x0 = projX[ia]
-      const y0 = projY[ia]
-      const x1 = projX[ib]
-      const y1 = projY[ib]
-      const x2 = projX[ic]
-      const y2 = projY[ic]
+      const x0 = projX[ia] ?? 0
+      const y0 = projY[ia] ?? 0
+      const x1 = projX[ib] ?? 0
+      const y1 = projY[ib] ?? 0
+      const x2 = projX[ic] ?? 0
+      const y2 = projY[ic] ?? 0
 
       // Backface culling
       const cross = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
       if (cross <= 0) continue
 
-      const c1 = model.faceColors1[i]
-      const c2 = model.faceColors2[i]
-      const c3 = model.faceColors3[i]
+      const c1 = model.faceColors1[i] ?? 0
+      const c2 = model.faceColors2[i] ?? 0
+      const c3 = model.faceColors3[i] ?? 0
 
       if (c2 === -1) {
-        // Flat shading
         rasterizer.rasterFlat(y0, y1, y2, x0, x1, x2, c1)
       } else {
-        // Gouraud shading
         rasterizer.rasterGouraud(y0, y1, y2, x0, x1, x2, c1, c2, c3)
       }
     }

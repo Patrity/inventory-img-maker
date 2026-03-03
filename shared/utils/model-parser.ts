@@ -5,8 +5,8 @@ import { adjustLightness } from '~~/shared/utils/rs-colors'
 export function parseModel(data: Uint8Array): ModelDefinition {
   const stream = new BinaryStream(data)
 
-  const lastByte1 = data[data.length - 1]
-  const lastByte2 = data[data.length - 2]
+  const lastByte1 = data[data.length - 1]!
+  const lastByte2 = data[data.length - 2]!
 
   // Detect format from last 2 bytes (signed)
   const sig1 = lastByte2 > 127 ? lastByte2 - 256 : lastByte2
@@ -165,12 +165,9 @@ function decodeType3(stream: BinaryStream, data: Uint8Array): ModelDefinition {
     if (flags & 1) dx = vertexXStream.readShortSmart()
     if (flags & 2) dy = vertexYStream.readShortSmart()
     if (flags & 4) dz = vertexZStream.readShortSmart()
-    def.vertexX[i] = prevX + dx
-    def.vertexY[i] = prevY + dy
-    def.vertexZ[i] = prevZ + dz
-    prevX = def.vertexX[i]
-    prevY = def.vertexY[i]
-    prevZ = def.vertexZ[i]
+    prevX = def.vertexX[i] = prevX + dx
+    prevY = def.vertexY[i] = prevY + dy
+    prevZ = def.vertexZ[i] = prevZ + dz
   }
 
   // Decode face attributes
@@ -255,7 +252,7 @@ function decodeType3(stream: BinaryStream, data: Uint8Array): ModelDefinition {
     texStream.offset = simpleTexOffset
 
     for (let i = 0; i < numTextureFaces; i++) {
-      if ((textureRenderTypes[i] & 0xFF) === 0) {
+      if (((textureRenderTypes[i] ?? 0) & 0xFF) === 0) {
         texStream.readUnsignedShort()
         texStream.readUnsignedShort()
         texStream.readUnsignedShort()
@@ -394,12 +391,9 @@ function decodeType1or2(_stream: BinaryStream, data: Uint8Array, isType1: boolea
     if (flags & 1) dx = vxStream.readShortSmart()
     if (flags & 2) dy = vyStream.readShortSmart()
     if (flags & 4) dz = vzStream.readShortSmart()
-    def.vertexX[i] = prevX + dx
-    def.vertexY[i] = prevY + dy
-    def.vertexZ[i] = prevZ + dz
-    prevX = def.vertexX[i]
-    prevY = def.vertexY[i]
-    prevZ = def.vertexZ[i]
+    prevX = def.vertexX[i] = prevX + dx
+    prevY = def.vertexY[i] = prevY + dy
+    prevZ = def.vertexZ[i] = prevZ + dz
   }
 
   // Decode face attributes
@@ -560,12 +554,9 @@ function decodeOldFormat(_stream: BinaryStream, data: Uint8Array): ModelDefiniti
     if (flags & 1) dx = vxStream.readShortSmart()
     if (flags & 2) dy = vyStream.readShortSmart()
     if (flags & 4) dz = vzStream.readShortSmart()
-    def.vertexX[i] = prevX + dx
-    def.vertexY[i] = prevY + dy
-    def.vertexZ[i] = prevZ + dz
-    prevX = def.vertexX[i]
-    prevY = def.vertexY[i]
-    prevZ = def.vertexZ[i]
+    prevX = def.vertexX[i] = prevX + dx
+    prevY = def.vertexY[i] = prevY + dy
+    prevZ = def.vertexZ[i] = prevZ + dz
   }
 
   // Decode face colors
@@ -604,7 +595,7 @@ function decodeOldFormat(_stream: BinaryStream, data: Uint8Array): ModelDefiniti
       if (flags & 1) def.faceRenderTypes[i] = 1
       if (flags & 2) {
         def.textureCoords[i] = flags >> 2
-        def.faceTextures[i] = def.faceColors[i]
+        def.faceTextures[i] = def.faceColors[i]!
         def.faceColors[i] = 127
       }
     }
@@ -659,17 +650,17 @@ export function computeNormals(def: ModelDefinition): void {
     def.vertexNormals[i] = { x: 0, y: 0, z: 0, magnitude: 0 }
 
   for (let i = 0; i < def.faceCount; i++) {
-    const ia = def.faceIndices1[i]
-    const ib = def.faceIndices2[i]
-    const ic = def.faceIndices3[i]
+    const ia = def.faceIndices1[i]!
+    const ib = def.faceIndices2[i]!
+    const ic = def.faceIndices3[i]!
 
     // Edge vectors
-    const xA = def.vertexX[ib] - def.vertexX[ia]
-    const yA = def.vertexY[ib] - def.vertexY[ia]
-    const zA = def.vertexZ[ib] - def.vertexZ[ia]
-    const xB = def.vertexX[ic] - def.vertexX[ia]
-    const yB = def.vertexY[ic] - def.vertexY[ia]
-    const zB = def.vertexZ[ic] - def.vertexZ[ia]
+    const xA = def.vertexX[ib]! - def.vertexX[ia]!
+    const yA = def.vertexY[ib]! - def.vertexY[ia]!
+    const zA = def.vertexZ[ib]! - def.vertexZ[ia]!
+    const xB = def.vertexX[ic]! - def.vertexX[ia]!
+    const yB = def.vertexY[ic]! - def.vertexY[ia]!
+    const zB = def.vertexZ[ic]! - def.vertexZ[ia]!
 
     // Cross product
     let nx = yA * zB - yB * zA
@@ -694,20 +685,23 @@ export function computeNormals(def: ModelDefinition): void {
     const renderType = def.faceRenderTypes ? def.faceRenderTypes[i] : 0
 
     if (renderType === 0) {
-      def.vertexNormals[ia].x += nx
-      def.vertexNormals[ia].y += ny
-      def.vertexNormals[ia].z += nz
-      def.vertexNormals[ia].magnitude++
+      const vnA = def.vertexNormals[ia]!
+      vnA.x += nx
+      vnA.y += ny
+      vnA.z += nz
+      vnA.magnitude++
 
-      def.vertexNormals[ib].x += nx
-      def.vertexNormals[ib].y += ny
-      def.vertexNormals[ib].z += nz
-      def.vertexNormals[ib].magnitude++
+      const vnB = def.vertexNormals[ib]!
+      vnB.x += nx
+      vnB.y += ny
+      vnB.z += nz
+      vnB.magnitude++
 
-      def.vertexNormals[ic].x += nx
-      def.vertexNormals[ic].y += ny
-      def.vertexNormals[ic].z += nz
-      def.vertexNormals[ic].magnitude++
+      const vnC = def.vertexNormals[ic]!
+      vnC.x += nx
+      vnC.y += ny
+      vnC.z += nz
+      vnC.magnitude++
     } else if (renderType === 1) {
       if (!def.faceNormals) def.faceNormals = new Array(def.faceCount)
       def.faceNormals[i] = { x: nx, y: ny, z: nz }
@@ -725,7 +719,15 @@ export function lightModel(
 ): LitModel {
   computeNormals(def)
 
-  const magnitude = Math.sqrt(lightX * lightX + lightY * lightY + lightZ * lightZ) | 0
+  const lightMagnitude = Math.sqrt(lightX * lightX + lightY * lightY + lightZ * lightZ) | 0
+  const scaledContrast = (lightMagnitude * contrast) >> 8
+
+  // Model height: max(-vertexY) since Y is inverted in OSRS (negative Y = up)
+  let modelHeight = 0
+  for (let i = 0; i < def.vertexCount; i++) {
+    const h = -(def.vertexY[i] ?? 0)
+    if (h > modelHeight) modelHeight = h
+  }
 
   const lit: LitModel = {
     vertexCount: def.vertexCount,
@@ -740,45 +742,48 @@ export function lightModel(
     faceColors2: new Int32Array(def.faceCount),
     faceColors3: new Int32Array(def.faceCount),
     facePriorities: def.faceRenderPriorities,
-    faceAlphas: def.faceAlphas
+    faceAlphas: def.faceAlphas,
+    modelHeight
   }
 
   for (let i = 0; i < def.faceCount; i++) {
-    const color = def.faceColors[i] & 0xFFFF
+    const color = def.faceColors[i]! & 0xFFFF
     const renderType = def.faceRenderTypes ? def.faceRenderTypes[i] : 0
 
     if (renderType === 1) {
+      // Flat shading: divisor = scaledContrast * 1.5
       const fn = def.faceNormals?.[i]
       if (fn) {
-        let light = ambient + (lightX * fn.x + lightY * fn.y + lightZ * fn.z) / (magnitude * (fn.x * fn.x + fn.y * fn.y + fn.z * fn.z > 0 ? 1 : 0) + 1)
-        light = (contrast * light) >> 8
+        const dot = lightX * fn.x + lightY * fn.y + lightZ * fn.z
+        const divisor = scaledContrast + (scaledContrast >> 1)
+        const light = (divisor > 0 ? (dot / divisor) | 0 : 0) + ambient
         lit.faceColors1[i] = adjustLightness(color, light)
-        lit.faceColors2[i] = -1
-        lit.faceColors3[i] = -1
       } else {
         lit.faceColors1[i] = color
-        lit.faceColors2[i] = -1
-        lit.faceColors3[i] = -1
       }
+      lit.faceColors2[i] = -1
+      lit.faceColors3[i] = -1
     } else if (renderType === 0) {
+      // Gouraud shading: divisor = scaledContrast * normalMagnitude
       const ia = def.faceIndices1[i]
       const ib = def.faceIndices2[i]
       const ic = def.faceIndices3[i]
 
-      const na = def.vertexNormals![ia]
-      const nb = def.vertexNormals![ib]
-      const nc = def.vertexNormals![ic]
+      const normals = def.vertexNormals!
+      const na = normals[ia as number]!
+      const nb = normals[ib as number]!
+      const nc = normals[ic as number]!
 
-      let lightA = ambient + (lightX * na.x + lightY * na.y + lightZ * na.z) / (magnitude * na.magnitude + 1)
-      lightA = (contrast * lightA) >> 8
+      const divA = scaledContrast * na.magnitude
+      const lightA = (divA > 0 ? ((lightX * na.x + lightY * na.y + lightZ * na.z) / divA) | 0 : 0) + ambient
       lit.faceColors1[i] = adjustLightness(color, lightA)
 
-      let lightB = ambient + (lightX * nb.x + lightY * nb.y + lightZ * nb.z) / (magnitude * nb.magnitude + 1)
-      lightB = (contrast * lightB) >> 8
+      const divB = scaledContrast * nb.magnitude
+      const lightB = (divB > 0 ? ((lightX * nb.x + lightY * nb.y + lightZ * nb.z) / divB) | 0 : 0) + ambient
       lit.faceColors2[i] = adjustLightness(color, lightB)
 
-      let lightC = ambient + (lightX * nc.x + lightY * nc.y + lightZ * nc.z) / (magnitude * nc.magnitude + 1)
-      lightC = (contrast * lightC) >> 8
+      const divC = scaledContrast * nc.magnitude
+      const lightC = (divC > 0 ? ((lightX * nc.x + lightY * nc.y + lightZ * nc.z) / divC) | 0 : 0) + ambient
       lit.faceColors3[i] = adjustLightness(color, lightC)
     } else {
       lit.faceColors1[i] = color
